@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
-// FooListerExpansion allows custom methods to be added to
-// FooLister.
-type FooListerExpansion interface{}
+// TaskClusterListerExpansion allows custom methods to be added to
+// TaskClusterLister.
+type TaskClusterListerExpansion interface{}
 
-// FooNamespaceListerExpansion allows custom methods to be added to
-// FooNamespaceLister.
-type FooNamespaceListerExpansion interface{}
+// TaskClusterNamespaceListerExpansion allows custom methods to be added to
+// TaskClusterNamespaceLister.
+type TaskClusterNamespaceListerExpansion interface{}

@@ -51,8 +51,8 @@ type fixture struct {
 	client     *fake.Clientset
 	kubeclient *k8sfake.Clientset
 	// Objects to put in the store.
-	fooLister        []*samplecontroller.Foo
-	deploymentLister []*apps.Deployment
+	taskClusterLister []*samplecontroller.TaskCluster
+	deploymentLister  []*apps.Deployment
 	// Actions expected to happen on the client.
 	kubeactions []core.Action
 	actions     []core.Action
@@ -69,14 +69,14 @@ func newFixture(t *testing.T) *fixture {
 	return f
 }
 
-func newFoo(name string, replicas *int32) *samplecontroller.Foo {
-	return &samplecontroller.Foo{
+func newTaskCluster(name string, replicas *int32) *samplecontroller.TaskCluster {
+	return &samplecontroller.TaskCluster{
 		TypeMeta: metav1.TypeMeta{APIVersion: samplecontroller.SchemeGroupVersion.String()},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: samplecontroller.FooSpec{
+		Spec: samplecontroller.TaskClusterSpec{
 			DeploymentName: fmt.Sprintf("%s-deployment", name),
 			Replicas:       replicas,
 		},
@@ -91,14 +91,14 @@ func (f *fixture) newController(ctx context.Context) (*Controller, informers.Sha
 	k8sI := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
 
 	c := NewController(ctx, f.kubeclient, f.client,
-		k8sI.Apps().V1().Deployments(), i.Samplecontroller().V1alpha1().Foos())
+		k8sI.Apps().V1().Deployments(), i.Samplecontroller().V1alpha1().TaskClusters())
 
-	c.foosSynced = alwaysReady
+	c.taskClustersSynced = alwaysReady
 	c.deploymentsSynced = alwaysReady
 	c.recorder = &record.FakeRecorder{}
 
-	for _, f := range f.fooLister {
-		i.Samplecontroller().V1alpha1().Foos().Informer().GetIndexer().Add(f)
+	for _, f := range f.taskClusterLister {
+		i.Samplecontroller().V1alpha1().TaskClusters().Informer().GetIndexer().Add(f)
 	}
 
 	for _, d := range f.deploymentLister {
@@ -108,26 +108,26 @@ func (f *fixture) newController(ctx context.Context) (*Controller, informers.Sha
 	return c, i, k8sI
 }
 
-func (f *fixture) run(ctx context.Context, fooRef cache.ObjectName) {
-	f.runController(ctx, fooRef, true, false)
+func (f *fixture) run(ctx context.Context, taskClusterRef cache.ObjectName) {
+	f.runController(ctx, taskClusterRef, true, false)
 }
 
-func (f *fixture) runExpectError(ctx context.Context, fooRef cache.ObjectName) {
-	f.runController(ctx, fooRef, true, true)
+func (f *fixture) runExpectError(ctx context.Context, taskClusterRef cache.ObjectName) {
+	f.runController(ctx, taskClusterRef, true, true)
 }
 
-func (f *fixture) runController(ctx context.Context, fooRef cache.ObjectName, startInformers bool, expectError bool) {
+func (f *fixture) runController(ctx context.Context, taskClusterRef cache.ObjectName, startInformers bool, expectError bool) {
 	c, i, k8sI := f.newController(ctx)
 	if startInformers {
 		i.Start(ctx.Done())
 		k8sI.Start(ctx.Done())
 	}
 
-	err := c.syncHandler(ctx, fooRef)
+	err := c.syncHandler(ctx, taskClusterRef)
 	if !expectError && err != nil {
-		f.t.Errorf("error syncing foo: %v", err)
+		f.t.Errorf("error syncing taskCluster: %v", err)
 	} else if expectError && err == nil {
-		f.t.Error("expected error syncing foo, got nil")
+		f.t.Error("expected error syncing taskCluster, got nil")
 	}
 
 	actions := filterInformerActions(f.client.Actions())
@@ -215,8 +215,8 @@ func filterInformerActions(actions []core.Action) []core.Action {
 	ret := []core.Action{}
 	for _, action := range actions {
 		if len(action.GetNamespace()) == 0 &&
-			(action.Matches("list", "foos") ||
-				action.Matches("watch", "foos") ||
+			(action.Matches("list", "taskClusters") ||
+				action.Matches("watch", "taskClusters") ||
 				action.Matches("list", "deployments") ||
 				action.Matches("watch", "deployments")) {
 			continue
@@ -235,83 +235,83 @@ func (f *fixture) expectUpdateDeploymentAction(d *apps.Deployment) {
 	f.kubeactions = append(f.kubeactions, core.NewUpdateAction(schema.GroupVersionResource{Resource: "deployments"}, d.Namespace, d))
 }
 
-func (f *fixture) expectUpdateFooStatusAction(foo *samplecontroller.Foo) {
-	action := core.NewUpdateSubresourceAction(schema.GroupVersionResource{Resource: "foos"}, "status", foo.Namespace, foo)
+func (f *fixture) expectUpdateTaskClusterStatusAction(taskCluster *samplecontroller.TaskCluster) {
+	action := core.NewUpdateSubresourceAction(schema.GroupVersionResource{Resource: "taskClusters"}, "status", taskCluster.Namespace, taskCluster)
 	f.actions = append(f.actions, action)
 }
 
-func getRef(foo *samplecontroller.Foo, t *testing.T) cache.ObjectName {
-	ref := cache.MetaObjectToName(foo)
+func getRef(taskCluster *samplecontroller.TaskCluster, t *testing.T) cache.ObjectName {
+	ref := cache.MetaObjectToName(taskCluster)
 	return ref
 }
 
 func TestCreatesDeployment(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	taskCluster := newTaskCluster("test", int32Ptr(1))
 	_, ctx := ktesting.NewTestContext(t)
 
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
+	f.taskClusterLister = append(f.taskClusterLister, taskCluster)
+	f.objects = append(f.objects, taskCluster)
 
-	expDeployment := newDeployment(foo)
+	expDeployment := newDeployment(taskCluster)
 	f.expectCreateDeploymentAction(expDeployment)
-	f.expectUpdateFooStatusAction(foo)
+	f.expectUpdateTaskClusterStatusAction(taskCluster)
 
-	f.run(ctx, getRef(foo, t))
+	f.run(ctx, getRef(taskCluster, t))
 }
 
 func TestDoNothing(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	taskCluster := newTaskCluster("test", int32Ptr(1))
 	_, ctx := ktesting.NewTestContext(t)
 
-	d := newDeployment(foo)
+	d := newDeployment(taskCluster)
 
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
+	f.taskClusterLister = append(f.taskClusterLister, taskCluster)
+	f.objects = append(f.objects, taskCluster)
 	f.deploymentLister = append(f.deploymentLister, d)
 	f.kubeobjects = append(f.kubeobjects, d)
 
-	f.expectUpdateFooStatusAction(foo)
-	f.run(ctx, getRef(foo, t))
+	f.expectUpdateTaskClusterStatusAction(taskCluster)
+	f.run(ctx, getRef(taskCluster, t))
 }
 
 func TestUpdateDeployment(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	taskCluster := newTaskCluster("test", int32Ptr(1))
 	_, ctx := ktesting.NewTestContext(t)
 
-	d := newDeployment(foo)
+	d := newDeployment(taskCluster)
 
 	// Update replicas
-	foo.Spec.Replicas = int32Ptr(2)
-	expDeployment := newDeployment(foo)
+	taskCluster.Spec.Replicas = int32Ptr(2)
+	expDeployment := newDeployment(taskCluster)
 
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
+	f.taskClusterLister = append(f.taskClusterLister, taskCluster)
+	f.objects = append(f.objects, taskCluster)
 	f.deploymentLister = append(f.deploymentLister, d)
 	f.kubeobjects = append(f.kubeobjects, d)
 
-	f.expectUpdateFooStatusAction(foo)
+	f.expectUpdateTaskClusterStatusAction(taskCluster)
 	f.expectUpdateDeploymentAction(expDeployment)
-	f.run(ctx, getRef(foo, t))
+	f.run(ctx, getRef(taskCluster, t))
 }
 
 func TestNotControlledByUs(t *testing.T) {
 	f := newFixture(t)
-	foo := newFoo("test", int32Ptr(1))
+	taskCluster := newTaskCluster("test", int32Ptr(1))
 	_, ctx := ktesting.NewTestContext(t)
 
-	d := newDeployment(foo)
+	d := newDeployment(taskCluster)
 
 	d.ObjectMeta.OwnerReferences = []metav1.OwnerReference{}
 
-	f.fooLister = append(f.fooLister, foo)
-	f.objects = append(f.objects, foo)
+	f.taskClusterLister = append(f.taskClusterLister, taskCluster)
+	f.objects = append(f.objects, taskCluster)
 	f.deploymentLister = append(f.deploymentLister, d)
 	f.kubeobjects = append(f.kubeobjects, d)
 
-	f.runExpectError(ctx, getRef(foo, t))
+	f.runExpectError(ctx, getRef(taskCluster, t))
 }
 
 func int32Ptr(i int32) *int32 { return &i }

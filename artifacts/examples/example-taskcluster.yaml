@@ -1,0 +1,7 @@
+apiVersion: samplecontroller.k8s.io/v1alpha1
+kind: TaskCluster
+metadata:
+  name: example-taskcluster
+spec:
+  deploymentName: example-taskcluster
+  replicas: 1

@@ -28,7 +28,7 @@ import (
 
 type SamplecontrollerV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	FoosGetter
+	TaskClustersGetter
 }
 
 // SamplecontrollerV1alpha1Client is used to interact with features provided by the samplecontroller.k8s.io group.
@@ -36,8 +36,8 @@ type SamplecontrollerV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SamplecontrollerV1alpha1Client) Foos(namespace string) FooInterface {
-	return newFoos(c, namespace)
+func (c *SamplecontrollerV1alpha1Client) TaskClusters(namespace string) TaskClusterInterface {
+	return newTaskClusters(c, namespace)
 }
 
 // NewForConfig creates a new SamplecontrollerV1alpha1Client for the given config.
