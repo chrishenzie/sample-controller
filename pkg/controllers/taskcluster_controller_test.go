@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controllers
 
 import (
 	"context"
@@ -83,14 +83,14 @@ func newTaskCluster(name string, replicas *int32) *samplecontroller.TaskCluster 
 	}
 }
 
-func (f *fixture) newController(ctx context.Context) (*Controller, informers.SharedInformerFactory, kubeinformers.SharedInformerFactory) {
+func (f *fixture) newController(ctx context.Context) (*TaskClusterController, informers.SharedInformerFactory, kubeinformers.SharedInformerFactory) {
 	f.client = fake.NewSimpleClientset(f.objects...)
 	f.kubeclient = k8sfake.NewSimpleClientset(f.kubeobjects...)
 
 	i := informers.NewSharedInformerFactory(f.client, noResyncPeriodFunc())
 	k8sI := kubeinformers.NewSharedInformerFactory(f.kubeclient, noResyncPeriodFunc())
 
-	c := NewController(ctx, f.kubeclient, f.client,
+	c := NewTaskClusterController(ctx, f.kubeclient, f.client,
 		k8sI.Apps().V1().Deployments(), i.Samplecontroller().V1alpha1().TaskClusters())
 
 	c.taskClustersSynced = alwaysReady

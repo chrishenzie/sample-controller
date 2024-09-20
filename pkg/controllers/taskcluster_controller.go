@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controllers
 
 import (
 	"context"
@@ -65,8 +65,8 @@ const (
 	FieldManager = controllerAgentName
 )
 
-// Controller is the controller implementation for TaskCluster resources
-type Controller struct {
+// TaskClusterController is the controller implementation for TaskCluster resources
+type TaskClusterController struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
 	// sampleclientset is a clientset for our own API group
@@ -88,13 +88,13 @@ type Controller struct {
 	recorder record.EventRecorder
 }
 
-// NewController returns a new sample controller
-func NewController(
+// NewTaskClusterController returns a new sample controller
+func NewTaskClusterController(
 	ctx context.Context,
 	kubeclientset kubernetes.Interface,
 	sampleclientset clientset.Interface,
 	deploymentInformer appsinformers.DeploymentInformer,
-	taskClusterInformer informers.TaskClusterInformer) *Controller {
+	taskClusterInformer informers.TaskClusterInformer) *TaskClusterController {
 	logger := klog.FromContext(ctx)
 
 	// Create event broadcaster
@@ -112,7 +112,7 @@ func NewController(
 		&workqueue.TypedBucketRateLimiter[cache.ObjectName]{Limiter: rate.NewLimiter(rate.Limit(50), 300)},
 	)
 
-	controller := &Controller{
+	controller := &TaskClusterController{
 		kubeclientset:      kubeclientset,
 		sampleclientset:    sampleclientset,
 		deploymentsLister:  deploymentInformer.Lister(),
@@ -159,7 +159,7 @@ func NewController(
 // as syncing informer caches and starting workers. It will block until stopCh
 // is closed, at which point it will shutdown the workqueue and wait for
 // workers to finish processing their current work items.
-func (c *Controller) Run(ctx context.Context, workers int) error {
+func (c *TaskClusterController) Run(ctx context.Context, workers int) error {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 	logger := klog.FromContext(ctx)
@@ -190,14 +190,14 @@ func (c *Controller) Run(ctx context.Context, workers int) error {
 // runWorker is a long-running function that will continually call the
 // processNextWorkItem function in order to read and process a message on the
 // workqueue.
-func (c *Controller) runWorker(ctx context.Context) {
+func (c *TaskClusterController) runWorker(ctx context.Context) {
 	for c.processNextWorkItem(ctx) {
 	}
 }
 
 // processNextWorkItem will read a single work item off the workqueue and
 // attempt to process it, by calling the syncHandler.
-func (c *Controller) processNextWorkItem(ctx context.Context) bool {
+func (c *TaskClusterController) processNextWorkItem(ctx context.Context) bool {
 	objRef, shutdown := c.workqueue.Get()
 	logger := klog.FromContext(ctx)
 
@@ -238,7 +238,7 @@ func (c *Controller) processNextWorkItem(ctx context.Context) bool {
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the TaskCluster resource
 // with the current status of the resource.
-func (c *Controller) syncHandler(ctx context.Context, objectRef cache.ObjectName) error {
+func (c *TaskClusterController) syncHandler(ctx context.Context, objectRef cache.ObjectName) error {
 	logger := klog.LoggerWithValues(klog.FromContext(ctx), "objectRef", objectRef)
 
 	// Get the TaskCluster resource with this namespace/name
@@ -311,7 +311,7 @@ func (c *Controller) syncHandler(ctx context.Context, objectRef cache.ObjectName
 	return nil
 }
 
-func (c *Controller) updateTaskClusterStatus(taskCluster *samplev1alpha1.TaskCluster, deployment *appsv1.Deployment) error {
+func (c *TaskClusterController) updateTaskClusterStatus(taskCluster *samplev1alpha1.TaskCluster, deployment *appsv1.Deployment) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -328,7 +328,7 @@ func (c *Controller) updateTaskClusterStatus(taskCluster *samplev1alpha1.TaskClu
 // enqueueTaskCluster takes a TaskCluster resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than TaskCluster.
-func (c *Controller) enqueueTaskCluster(obj interface{}) {
+func (c *TaskClusterController) enqueueTaskCluster(obj interface{}) {
 	if objectRef, err := cache.ObjectToName(obj); err != nil {
 		utilruntime.HandleError(err)
 		return
@@ -342,7 +342,7 @@ func (c *Controller) enqueueTaskCluster(obj interface{}) {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that TaskCluster resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *Controller) handleObject(obj interface{}) {
+func (c *TaskClusterController) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	logger := klog.FromContext(context.Background())
