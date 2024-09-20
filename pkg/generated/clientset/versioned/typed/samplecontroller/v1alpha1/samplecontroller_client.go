@@ -28,12 +28,17 @@ import (
 
 type SamplecontrollerV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	TasksGetter
 	TaskClustersGetter
 }
 
 // SamplecontrollerV1alpha1Client is used to interact with features provided by the samplecontroller.k8s.io group.
 type SamplecontrollerV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *SamplecontrollerV1alpha1Client) Tasks(namespace string) TaskInterface {
+	return newTasks(c, namespace)
 }
 
 func (c *SamplecontrollerV1alpha1Client) TaskClusters(namespace string) TaskClusterInterface {

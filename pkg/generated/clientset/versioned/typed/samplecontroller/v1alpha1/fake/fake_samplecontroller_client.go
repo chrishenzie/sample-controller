@@ -28,6 +28,10 @@ type FakeSamplecontrollerV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeSamplecontrollerV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
+	return &FakeTasks{c, namespace}
+}
+
 func (c *FakeSamplecontrollerV1alpha1) TaskClusters(namespace string) v1alpha1.TaskClusterInterface {
 	return &FakeTaskClusters{c, namespace}
 }
