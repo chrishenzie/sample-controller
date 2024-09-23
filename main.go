@@ -71,16 +71,29 @@ func main() {
 	taskClusterController := controllers.NewTaskClusterController(ctx, kubeClient, exampleClient,
 		kubeInformerFactory.Apps().V1().Deployments(),
 		exampleInformerFactory.Samplecontroller().V1alpha1().TaskClusters())
+	taskController := controllers.NewTaskController(ctx, kubeClient, exampleClient,
+		exampleInformerFactory.Samplecontroller().V1alpha1().TaskClusters(),
+		kubeInformerFactory.Core().V1().Pods(),
+		exampleInformerFactory.Samplecontroller().V1alpha1().Tasks())
 
 	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(ctx.done())
 	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
 	kubeInformerFactory.Start(ctx.Done())
 	exampleInformerFactory.Start(ctx.Done())
 
-	if err = taskClusterController.Run(ctx, 2); err != nil {
-		logger.Error(err, "Error running task cluster controller")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
-	}
+	go func() {
+		if err = taskClusterController.Run(ctx, 2); err != nil {
+			logger.Error(err, "Error running task cluster controller")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
+	}()
+	go func() {
+		if err = taskController.Run(ctx, 2); err != nil {
+			logger.Error(err, "Error running task controller")
+			klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		}
+	}()
+	<-ctx.Done()
 }
 
 func init() {
