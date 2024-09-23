@@ -49,12 +49,6 @@ import (
 const controllerAgentName = "sample-controller"
 
 const (
-	// SuccessSynced is used as part of the Event 'reason' when a TaskCluster is synced
-	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a TaskCluster fails
-	// to sync due to a Deployment of the same name already existing.
-	ErrResourceExists = "ErrResourceExists"
-
 	// MessageResourceExists is the message used for Events when a resource
 	// fails to sync due to a Deployment already existing
 	MessageResourceExists = "Resource %q already exists and is not managed by TaskCluster"
